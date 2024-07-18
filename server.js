@@ -43,6 +43,7 @@ async function mainApp() {
         'Add Role',
         'View All Departments',
         'Add Department',
+        'Delete Department',
         'Quit',
         'View All Employees'
     ];
@@ -76,7 +77,10 @@ switch (answer.choice) {
         viewAllDepartments();
         break;
     case 'Add Department':
-        //function
+        addDepartment();
+        break;
+    case 'Delete Department':
+        deleteDepartment();
         break;
     case 'Quit':
         pool.end();
@@ -125,10 +129,42 @@ function viewAllRoles() {
     })
 }
 
-function quit() {
+function addDepartment() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'name',
+            message: 'What is the name of the department?'
+        }
+    ]).then(answer => {
+        pool.query('INSERT INTO department (name) VALUES ($1)', [answer.name], (err, result) => {
+            if (err) {
+                console.error('Error adding department:', err);
+            } else {
+                console.log(`Added ${answer.name} into the database`);
+                mainApp();
+            }
+        }
+    )
+})};
 
+function deleteDepartment() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'name',
+            message: 'Enter the name of the department you would like to delete.'
+        }
+    ]).then(answer => {
+        pool.query('DELETE FROM department WHERE name = $1', [answer.name], (err, result) => {
+            if (err) {
+                console.error('Error trying to delete department:', err);
+            } else {
+                console.log(`Department ${answer.name} has been deleted.`)
+                mainApp();
+            }
+        })
+    })
 }
-
-
 mainApp();
 
