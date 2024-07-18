@@ -71,7 +71,7 @@ switch (answer.choice) {
         viewAllRoles();
         break;
     case 'Add Role':
-        //function
+        addRole()
         break;
     case 'View All Departments':
         viewAllDepartments();
@@ -126,6 +126,31 @@ function viewAllRoles() {
         }
     console.table(result.rows);
     mainApp();
+    })
+}
+
+//NEED TO WORK ON THIS FUNCTION!!!
+function addRole() {
+    const departmentChoices = query.pool('SELECT * FROM department');
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'name',
+            message: 'Please insert role name.'
+        },
+        {
+            type:'input',
+            name: 'name',
+            message: 'Please enter role salary.'
+        },
+        {
+            type: 'input',
+            name: 'department',
+            message: 'Select a department for the role.',
+            choices: departmentChoices
+        }
+    ]).then(answer => {
+        query.pool('INSERT INTO role (name)')
     })
 }
 
