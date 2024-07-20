@@ -41,6 +41,7 @@ async function mainApp() {
         'Update Employee Role',
         'View All Roles',
         'Add Role',
+        'Delete Role',
         'View All Departments',
         'Add Department',
         'Delete Department',
@@ -62,7 +63,7 @@ switch (answer.choice) {
         viewAllEmployees();
         break;
     case 'Add Employee':
-        // function
+        addEmployee();
         break;
     case 'Update Employee Role':
         //function
@@ -72,6 +73,9 @@ switch (answer.choice) {
         break;
     case 'Add Role':
         addRole()
+        break;
+    case 'Delete Role':
+        deleteRole();
         break;
     case 'View All Departments':
         viewAllDepartments();
@@ -109,6 +113,21 @@ function viewAllEmployees() {
     })
 }
 
+function addEmployee() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'first_name',
+            message: "What is the employee's first name?"
+        },
+        {
+            type: 'input',
+            name: 'last_name',
+            message: "What is the employee's last name?"
+        }
+    ])
+}
+
 function viewAllDepartments() {
     pool.query(`SELECT department.id, department.name FROM department`, function (err, result) {
         console.table(result.rows);
@@ -129,28 +148,65 @@ function viewAllRoles() {
     })
 }
 
-//NEED TO WORK ON THIS FUNCTION!!!
 function addRole() {
-    const departmentChoices = query.pool('SELECT * FROM department');
+    pool.query('SELECT * FROM department', (err, result) => {
+        if (err) {
+            console.error('Error fetching department choices:'. error);
+            return;
+        }
+        const departmentChoices = result.rows.map(row => ({
+            name: row.name,
+            value: row.id
+        }));
+
+        inquirer.prompt([
+            {
+                type: 'input',
+                name: 'title',
+                message: 'Please insert role name.'
+            },
+            {
+                type:'input',
+                name: 'salary',
+                message: 'Please enter role salary.',
+            },
+            {
+                type: 'input',
+                name: 'department',
+                message: 'Select a department for the role.',
+                choices: departmentChoices
+            }
+        ]).then(answer => {
+            pool.query('INSERT INTO role (title, salary, department_id) VALUES ($1, $2, $3)', 
+                [answer.title, parseFloat(answer.salary), answer.department], (err, result) => {
+                    if (err) {
+                        console.error('Error adding role:', err);
+                    } else {
+                        console.log(`Added ${answer.title} into the database`);
+                        mainApp();
+                    }
+                });
+        })
+    })
+
+}
+
+function deleteRole() {
     inquirer.prompt([
         {
             type: 'input',
             name: 'name',
-            message: 'Please insert role name.'
-        },
-        {
-            type:'input',
-            name: 'name',
-            message: 'Please enter role salary.'
-        },
-        {
-            type: 'input',
-            name: 'department',
-            message: 'Select a department for the role.',
-            choices: departmentChoices
+            message: 'Enter the name of the role you would like to delete.'
         }
     ]).then(answer => {
-        query.pool('INSERT INTO role (name)')
+        pool.query('DELETE FROM role WHERE title = $1', [answer.name], (err, result) => {
+            if (err) {
+                console.error('Error trying to delete role:', err);
+            } else {
+                console.log(`Role ${answer.name} has been deleted.`)
+                mainApp();
+            }
+        })
     })
 }
 
