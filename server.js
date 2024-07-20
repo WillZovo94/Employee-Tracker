@@ -24,11 +24,6 @@ const pool = new Pool (
 pool.connect()
 .catch(err => console.error("Couldn't connect to database"));
 
-/* pool.query('SELECT * FROM department', function (err, {rows}) {
-    console.log(rows);
-})
-    */
-
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
@@ -39,6 +34,7 @@ async function mainApp() {
         'View All Employees',
         'Add Employee',
         'Update Employee Role',
+        'Delete Employee',
         'View All Roles',
         'Add Role',
         'Delete Role',
@@ -46,7 +42,6 @@ async function mainApp() {
         'Add Department',
         'Delete Department',
         'Quit',
-        'View All Employees'
     ];
     
 const answer = await inquirer.prompt([
@@ -54,7 +49,8 @@ const answer = await inquirer.prompt([
         type: 'list',
         name: 'choice',
         message: 'Please select an option',
-        choices: choices
+        choices: choices,
+        suggestOnly: false
     }
     ]);
 
@@ -66,7 +62,10 @@ switch (answer.choice) {
         addEmployee();
         break;
     case 'Update Employee Role':
-        //function
+        updateEmployee();
+        break;
+    case 'Delete Employee':
+        deleteEmployee();
         break;
     case 'View All Roles':
         viewAllRoles();
@@ -97,6 +96,60 @@ switch (answer.choice) {
 
 console.log(answer.choice);
 }
+// make it where you select names instead of numbers maybe.
+function addEmployee() {
+    pool.query('SELECT * FROM role; SELECT * FROM employee WHERE manager_id IS NULL', (err, result) => {
+        if (err) {
+            console.error('Error fetching role choices:'. error);
+            return;
+        }
+        const [roleResult, employeeResult] = result;
+        const roleChoices = roleResult.rows.map(row => ({
+            name: row.name,
+            value: row.id
+        }));
+        const managerChoice = employeeResult.rows.map(row => ({
+            name: row.id
+        }))
+        
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'first_name',
+            message: "What is the employee's first name?"
+        },
+        {
+            type: 'input',
+            name: 'last_name',
+            message: "What is the employee's last name?"
+        },
+        {
+            type: 'input',
+            name: 'role',
+            message: "Type the employee's role.",
+            choices: roleChoices
+        },
+        {
+            type: 'list',
+            name: 'manager',
+            message: "What is the employee's manager?",
+            choices: managerChoice
+        }
+
+
+    ]).then(answer => {
+        pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4)', 
+            [answer.first_name, answer.last_name, answer.role, answer.manager], (err, result) => {
+                if (err) {
+                    console.error('Error adding role:', err);
+                } else {
+                    console.log(`Added ${answer.first_name} ${answer.last_name} into the database`);
+                    mainApp();
+                }
+            });
+    })
+})
+};
 
 function viewAllEmployees() {
     pool.query(`SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager
@@ -113,19 +166,66 @@ function viewAllEmployees() {
     })
 }
 
-function addEmployee() {
+function updateEmployee() {
+    pool.query(`SELECT id, first_name, last_name FROM employee; SELECT id, title FROM role`, function (err, result) {
+        if (err) {
+            console.error('Error fetching employee list:'. error);
+            return;
+        }
+        const employeeChoices = result[0].rows.map(employee => ({
+            name: `${employee.first_name} ${employee.last_name}`,
+            value: employee.id
+        }))
+        const roleChoices = result[1].rows.map(role => ({
+            name: role.title,
+            value: role.id
+        }))
+        inquirer.prompt([
+            {
+                type: 'list',
+                name: 'employeeId',
+                message: 'Select the employee to update:',
+                choices: employeeChoices
+            },
+            {
+                type: 'list',
+                name: 'roleId',
+                message: 'Select the new role:',
+                choices: roleChoices
+            }
+        ]).then((answers) => {
+            pool.query(`UPDATE employee SET role_id = $1 WHERE id = $2`,
+                [answers.roleId, answers.employeeId], function (err, result) {
+                    if (err) {
+                        console.log('Error updating employee:', err);
+                        return;
+                    }
+                    console.log('Employee information updated successfully!')
+                    mainApp();
+                }
+            )
+        })
+        
+    })
+}
+
+function deleteEmployee() {
     inquirer.prompt([
         {
             type: 'input',
             name: 'first_name',
-            message: "What is the employee's first name?"
-        },
-        {
-            type: 'input',
-            name: 'last_name',
-            message: "What is the employee's last name?"
+            message: 'Enter the name of the employee you would like to delete.'
         }
-    ])
+    ]).then(answer => {
+        pool.query('DELETE FROM employee WHERE first_name = $1', [answer.first_name], (err, result) => {
+            if (err) {
+                console.error('Error trying to delete role:', err);
+            } else {
+                console.log(`Employee ${answer.first_name} has been deleted.`)
+                mainApp();
+            }
+        })
+    })
 }
 
 function viewAllDepartments() {
@@ -173,7 +273,7 @@ function addRole() {
             {
                 type: 'input',
                 name: 'department',
-                message: 'Select a department for the role.',
+                message: 'Type a department for the role.',
                 choices: departmentChoices
             }
         ]).then(answer => {
