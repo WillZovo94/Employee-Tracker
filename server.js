@@ -96,21 +96,22 @@ switch (answer.choice) {
 
 console.log(answer.choice);
 }
-// make it where you select names instead of numbers maybe.
+
 function addEmployee() {
-    pool.query('SELECT * FROM role; SELECT * FROM employee WHERE manager_id IS NULL', (err, result) => {
+    pool.query('SELECT * FROM role; SELECT id, first_name, last_name FROM employee WHERE manager_id IS NULL', (err, result) => {
         if (err) {
             console.error('Error fetching role choices:'. error);
             return;
         }
         const [roleResult, employeeResult] = result;
         const roleChoices = roleResult.rows.map(row => ({
-            name: row.name,
+            name: `${row.title}`,
             value: row.id
         }));
         const managerChoice = employeeResult.rows.map(row => ({
-            name: row.id
-        }))
+            name: `${row.first_name} ${row.last_name}`,
+            value: row.id
+        }));
         
     inquirer.prompt([
         {
@@ -124,7 +125,7 @@ function addEmployee() {
             message: "What is the employee's last name?"
         },
         {
-            type: 'input',
+            type: 'list',
             name: 'role',
             message: "Type the employee's role.",
             choices: roleChoices
@@ -214,19 +215,21 @@ function deleteEmployee() {
         {
             type: 'input',
             name: 'first_name',
-            message: 'Enter the name of the employee you would like to delete.'
+            message: 'Enter the name of the employee you would like to delete.'        
         }
+
     ]).then(answer => {
-        pool.query('DELETE FROM employee WHERE first_name = $1', [answer.first_name], (err, result) => {
+        const employeeName = answer.first_name;
+        pool.query('DELETE FROM employee WHERE first_name = $1', [employeeName], (err, result) => {
             if (err) {
-                console.error('Error trying to delete role:', err);
+                console.error('Error trying to delete employee:', err);
             } else {
-                console.log(`Employee ${answer.first_name} has been deleted.`)
+                console.log(`Employee ${employeeName} has been deleted.`)
                 mainApp();
             }
         })
-    })
-}
+    })};
+
 
 function viewAllDepartments() {
     pool.query(`SELECT department.id, department.name FROM department`, function (err, result) {
@@ -255,7 +258,7 @@ function addRole() {
             return;
         }
         const departmentChoices = result.rows.map(row => ({
-            name: row.name,
+            name: `${row.name}`,
             value: row.id
         }));
 
@@ -271,7 +274,7 @@ function addRole() {
                 message: 'Please enter role salary.',
             },
             {
-                type: 'input',
+                type: 'list',
                 name: 'department',
                 message: 'Type a department for the role.',
                 choices: departmentChoices
