@@ -1,3 +1,5 @@
+-- A seed to input base information into the database.
+
 DO $$
 BEGIN
 INSERT INTO department (name) VALUES
@@ -18,7 +20,7 @@ INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES
 ('Jessica', 'Garcia', 3, 1),
 ('Alice', 'Williams', 4, NULL);
 RAISE NOTICE 'Database Read';
-
+-- Exception for error check
 EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE 'An error occured: %', SqLERRM;

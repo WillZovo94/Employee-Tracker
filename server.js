@@ -1,16 +1,20 @@
+// Grabbing all dependencies
 const express = require('express');
 const inquirer = require('inquirer');
 const { Pool } = require('pg');
+// To be able to hide information
 require('dotenv').config();
 
-// console.log(process.env);
-
+// Accessing port
 const PORT = process.env.PORT || 3001;
+// Calling express into a variable
 const app = express();
 
+//Middleware
 app.use(express.urlencoded({ extended: false }))
 app.use(express.json());
 
+// A new Pool to gather user information
 const pool = new Pool ( 
     {
         user: process.env.PSQL_NAME,
@@ -24,11 +28,12 @@ const pool = new Pool (
 pool.connect()
 .catch(err => console.error("Couldn't connect to database"));
 
+// Listening for port
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
 
-
+// Access to choices
 async function mainApp() {
     const choices = [
         'View All Employees',
@@ -44,6 +49,7 @@ async function mainApp() {
         'Quit',
     ];
     
+// Prompt options for the choices above
 const answer = await inquirer.prompt([
     {
         type: 'list',
@@ -54,6 +60,7 @@ const answer = await inquirer.prompt([
     }
     ]);
 
+// Switch statement for when a choice is selected, to run the function.
 switch (answer.choice) {
     case 'View All Employees':
         viewAllEmployees();
@@ -96,8 +103,9 @@ switch (answer.choice) {
 
 console.log(answer.choice);
 }
-
+// Adds Employee function
 function addEmployee() {
+    // Selecting information from database using query
     pool.query('SELECT * FROM role; SELECT id, first_name, last_name FROM employee WHERE manager_id IS NULL', (err, result) => {
         if (err) {
             console.error('Error fetching role choices:'. error);
@@ -112,7 +120,7 @@ function addEmployee() {
             name: `${row.first_name} ${row.last_name}`,
             value: row.id
         }));
-        
+        // Prompt for questions
     inquirer.prompt([
         {
             type: 'input',
@@ -137,7 +145,7 @@ function addEmployee() {
             choices: managerChoice
         }
 
-
+        // What to do with answers
     ]).then(answer => {
         pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4)', 
             [answer.first_name, answer.last_name, answer.role, answer.manager], (err, result) => {
@@ -152,7 +160,9 @@ function addEmployee() {
 })
 };
 
+// View Employee Function
 function viewAllEmployees() {
+    // Getting information from database using query
     pool.query(`SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager
         FROM employee 
         INNER JOIN role ON employee.role_id = role.id 
@@ -167,7 +177,9 @@ function viewAllEmployees() {
     })
 }
 
+// Update Employee Function
 function updateEmployee() {
+    // Getting information from database using query
     pool.query(`SELECT id, first_name, last_name FROM employee; SELECT id, title FROM role`, function (err, result) {
         if (err) {
             console.error('Error fetching employee list:'. error);
@@ -181,6 +193,7 @@ function updateEmployee() {
             name: role.title,
             value: role.id
         }))
+        // Questions from inquirer
         inquirer.prompt([
             {
                 type: 'list',
@@ -194,6 +207,7 @@ function updateEmployee() {
                 message: 'Select the new role:',
                 choices: roleChoices
             }
+            // Storing answers
         ]).then((answers) => {
             pool.query(`UPDATE employee SET role_id = $1 WHERE id = $2`,
                 [answers.roleId, answers.employeeId], function (err, result) {
@@ -210,14 +224,16 @@ function updateEmployee() {
     })
 }
 
+// Delete Employee Function
 function deleteEmployee() {
+    // Getting input from inquirer question
     inquirer.prompt([
         {
             type: 'input',
             name: 'first_name',
             message: 'Enter the name of the employee you would like to delete.'        
         }
-
+        // Deleting employee based on first_name input
     ]).then(answer => {
         const employeeName = answer.first_name;
         pool.query('DELETE FROM employee WHERE first_name = $1', [employeeName], (err, result) => {
@@ -230,15 +246,18 @@ function deleteEmployee() {
         })
     })};
 
-
+// View All Departments Function
 function viewAllDepartments() {
+    // Getting information from database using query
     pool.query(`SELECT department.id, department.name FROM department`, function (err, result) {
         console.table(result.rows);
         mainApp();
     })
 }
 
+// View All Roles Function
 function viewAllRoles() {
+    // Getting information from database using query
     pool.query(`SELECT role.id, role.title, department.name AS department, role.salary 
     FROM role
     INNER JOIN department ON role.department_id = department.id`, function (err, result) {
@@ -251,7 +270,9 @@ function viewAllRoles() {
     })
 }
 
+// Add Role Function
 function addRole() {
+    // Getting information from database using query
     pool.query('SELECT * FROM department', (err, result) => {
         if (err) {
             console.error('Error fetching department choices:'. error);
@@ -261,7 +282,7 @@ function addRole() {
             name: `${row.name}`,
             value: row.id
         }));
-
+        // Inquirer questions
         inquirer.prompt([
             {
                 type: 'input',
@@ -279,6 +300,7 @@ function addRole() {
                 message: 'Type a department for the role.',
                 choices: departmentChoices
             }
+            // Storing input answers
         ]).then(answer => {
             pool.query('INSERT INTO role (title, salary, department_id) VALUES ($1, $2, $3)', 
                 [answer.title, parseFloat(answer.salary), answer.department], (err, result) => {
@@ -294,13 +316,16 @@ function addRole() {
 
 }
 
+// Delete Role Function
 function deleteRole() {
+    // Questions from inquirer
     inquirer.prompt([
         {
             type: 'input',
             name: 'name',
             message: 'Enter the name of the role you would like to delete.'
         }
+    // Deleting based on input
     ]).then(answer => {
         pool.query('DELETE FROM role WHERE title = $1', [answer.name], (err, result) => {
             if (err) {
@@ -313,13 +338,16 @@ function deleteRole() {
     })
 }
 
+// Add Department Function
 function addDepartment() {
+    // Asking question from Inquirer
     inquirer.prompt([
         {
             type: 'input',
             name: 'name',
             message: 'What is the name of the department?'
         }
+        // Inserting answers into department
     ]).then(answer => {
         pool.query('INSERT INTO department (name) VALUES ($1)', [answer.name], (err, result) => {
             if (err) {
@@ -332,13 +360,17 @@ function addDepartment() {
     )
 })};
 
+
+// Delete Department Function
 function deleteDepartment() {
+    // Inquirer question 
     inquirer.prompt([
         {
             type: 'input',
             name: 'name',
             message: 'Enter the name of the department you would like to delete.'
         }
+    // Deleting department based on input
     ]).then(answer => {
         pool.query('DELETE FROM department WHERE name = $1', [answer.name], (err, result) => {
             if (err) {
@@ -350,5 +382,7 @@ function deleteDepartment() {
         })
     })
 }
+
+// Call main app to run on initial start-up
 mainApp();
 
